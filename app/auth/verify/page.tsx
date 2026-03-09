@@ -1,117 +1,77 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 export default function VerifyPage() {
   const router = useRouter()
-  const [code, setCode] = useState(['', '', '', '', '', ''])
-  const [phone, setPhone] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [resendTimer, setResendTimer] = useState(60)
-  const inputs = useRef<(HTMLInputElement | null)[]>([])
+  const [email, setEmail] = useState('')
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const [timer, setTimer] = useState(60)
 
   useEffect(() => {
-    const p = sessionStorage.getItem('auth_phone')
-    if (!p) router.push('/auth')
-    else setPhone(p)
+    const e = sessionStorage.getItem('auth_email')
+    if (!e) router.push('/auth')
+    else setEmail(e)
 
-    const interval = setInterval(() => {
-      setResendTimer(t => (t > 0 ? t - 1 : 0))
-    }, 1000)
+    const interval = setInterval(() => setTimer(t => (t > 0 ? t - 1 : 0)), 1000)
     return () => clearInterval(interval)
   }, [router])
 
-  const handleChange = (i: number, val: string) => {
-    if (!/^\d*$/.test(val)) return
-    const next = [...code]
-    next[i] = val.slice(-1)
-    setCode(next)
-    if (val && i < 5) inputs.current[i + 1]?.focus()
-    if (next.every(d => d)) handleVerify(next.join(''))
-  }
-
-  const handleKeyDown = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !code[i] && i > 0) {
-      inputs.current[i - 1]?.focus()
-    }
-  }
-
-  const handleVerify = async (otp: string) => {
-    setError('')
-    setLoading(true)
-    const { error: err } = await supabase.auth.verifyOtp({
-      phone,
-      token: otp,
-      type: 'sms',
-    })
-    setLoading(false)
-    if (err) {
-      setError('Неверный код. Попробуйте ещё раз.')
-      setCode(['', '', '', '', '', ''])
-      inputs.current[0]?.focus()
-    } else {
-      sessionStorage.removeItem('auth_phone')
-      router.push('/dashboard')
-    }
-  }
-
   const handleResend = async () => {
-    if (resendTimer > 0) return
-    await supabase.auth.signInWithOtp({ phone })
-    setResendTimer(60)
-    setCode(['', '', '', '', '', ''])
-    inputs.current[0]?.focus()
+    if (timer > 0) return
+    setResending(true)
+    await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+    })
+    setResending(false)
+    setResent(true)
+    setTimer(60)
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full max-w-sm p-8">
-        <Link href="/" className="block text-center font-bold text-xl text-trust-900 mb-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 w-full max-w-sm p-8 text-center">
+        <Link href="/" className="block font-bold text-xl text-trust-900 mb-8">
           Трастмаркет
         </Link>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Введите код</h1>
-        <p className="text-gray-500 text-sm mb-6">
-          Отправили SMS на <span className="font-medium text-gray-700">{phone}</span>
-        </p>
-
-        <div className="flex gap-2 justify-center mb-4">
-          {code.map((digit, i) => (
-            <input
-              key={i}
-              ref={el => { inputs.current[i] = el }}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={e => handleChange(i, e.target.value)}
-              onKeyDown={e => handleKeyDown(i, e)}
-              className="w-12 h-14 text-center text-xl font-bold border border-gray-200 rounded-xl focus:border-trust-500 focus:ring-2 focus:ring-trust-100 outline-none"
-              autoFocus={i === 0}
-            />
-          ))}
+        <div className="w-16 h-16 bg-trust-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8 text-trust-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
         </div>
 
-        {error && <p className="text-red-500 text-sm text-center mb-3">{error}</p>}
-        {loading && <p className="text-gray-400 text-sm text-center mb-3">Проверяем...</p>}
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Проверьте почту</h1>
+        <p className="text-gray-500 text-sm mb-1">Отправили ссылку для входа на</p>
+        <p className="font-medium text-gray-800 mb-6">{email}</p>
+
+        <p className="text-xs text-gray-400 mb-6">
+          Нажмите на ссылку в письме — и вы войдёте автоматически. Проверьте папку «Спам», если письмо не пришло.
+        </p>
+
+        {resent && (
+          <p className="text-green-600 text-sm mb-3">Письмо отправлено повторно</p>
+        )}
 
         <button
           onClick={handleResend}
-          disabled={resendTimer > 0}
+          disabled={timer > 0 || resending}
           className="w-full text-sm text-trust-600 py-2 disabled:text-gray-400"
         >
-          {resendTimer > 0 ? `Отправить повторно через ${resendTimer} с` : 'Отправить код повторно'}
+          {timer > 0 ? `Отправить повторно через ${timer} с` : resending ? 'Отправляем...' : 'Отправить повторно'}
         </button>
 
         <button
           onClick={() => router.push('/auth')}
           className="w-full text-sm text-gray-400 py-1 hover:text-gray-600"
         >
-          Изменить номер
+          Изменить email
         </button>
       </div>
     </div>
