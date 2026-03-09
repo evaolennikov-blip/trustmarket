@@ -1,12 +1,12 @@
-import { Metadata } from 'next'
-import Link from 'next/link'
+'use client'
 
-export const metadata: Metadata = {
-  title: 'Мой профиль — Трастмаркет',
-  description: 'Управление объявлениями, сделками и сообщениями',
-}
+import Link from 'next/link'
+import { useAuth } from '@/lib/useAuth'
 
 export default function DashboardPage() {
+  const { loading } = useAuth()
+  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Загрузка...</div>
+
   const user = {
     id: 'user-1',
     name: 'Иван И.',
