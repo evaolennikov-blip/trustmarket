@@ -1,0 +1,130 @@
+'use client'
+
+import Link from 'next/link'
+
+export default function HowItWorksPage() {
+  const steps = [
+    {
+      number: 1,
+      title: 'Продавец подаёт объявление',
+      description: 'Модерация проверяет каждое объявление перед публикацией. Мы убеждаемся, что товар соответствует описанию.'
+    },
+    {
+      number: 2,
+      title: 'Покупатель находит товар',
+      description: 'Фильтр по уровню проверки продавца помогает выбрать надёжного продавца. Видите уровень верификации сразу в объявлении.'
+    },
+    {
+      number: 3,
+      title: 'Сделка через эскроу',
+      description: 'Деньги хранятся на защищённом счёте до подтверждения получения товара. Продавец получит оплату только после того, как покупатель подтвердит, что товар получен и соответствует описанию.'
+    },
+    {
+      number: 4,
+      title: 'Рейтинг после сделки',
+      description: 'Только реальные покупатели могут оставить отзыв. Это исключает накрученные рейтинги и обеспечивает честность.'
+    }
+  ]
+
+  const tiers = [
+    { name: 'Нет', required: 'Только email', signals: 'Новый пользователь' },
+    { name: 'Базовая', required: 'Email + телефон', signals: 'Подтверждён контакт' },
+    { name: 'Расширенная', required: 'Паспортные данные', signals: 'Личность подтверждена' },
+    { name: 'Доверенная', required: '10+ успешных сделок', signals: 'Проверенный временем' }
+  ]
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-trust-700 rounded-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <span className="font-bold text-xl text-trust-900">Трастмаркет</span>
+            </Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Как это работает</h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Трастмаркет — это безопасная площадка для покупки и продажи электроники. 
+            Каждая сделка защищена, каждый продавец проверен.
+          </p>
+        </div>
+      </div>
+
+      {/* Steps */}
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {steps.map((step) => (
+            <div key={step.number} className="bg-white rounded-xl border border-gray-100 p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-trust-700 text-white rounded-full flex items-center justify-center flex-shrink-0 font-bold">
+                  {step.number}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
+                  <p className="text-gray-600">{step.description}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Verification Tiers Table */}
+      <div className="bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 py-16">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">Уровни верификации продавцов</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Уровень</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Что требуется</th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">Что это значит для покупателя</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tiers.map((tier) => (
+                  <tr key={tier.name} className="border-b border-gray-100">
+                    <td className="py-4 px-4">
+                      <span className={`font-medium ${
+                        tier.name === 'Доверенная' ? 'text-accent-600' : 
+                        tier.name === 'Расширенная' ? 'text-trust-600' : 
+                        'text-gray-700'
+                      }`}>
+                        {tier.name}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-gray-600">{tier.required}</td>
+                    <td className="py-4 px-4 text-gray-600">{tier.signals}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* CTA */}
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <Link 
+          href="/listings" 
+          className="inline-block bg-trust-700 hover:bg-trust-800 text-white font-semibold px-8 py-4 rounded-xl transition-colors text-lg"
+        >
+          Смотреть объявления
+        </Link>
+      </div>
+    </div>
+  )
+}
