@@ -17,17 +17,36 @@ export default function Home() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const [error, setError] = useState<string | null>(null)
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!formData.name || !formData.email || !formData.role) return
     
     setLoading(true)
+    setError(null)
     
-    // Simulate API call - replace with actual endpoint
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    setSubmitted(true)
-    setLoading(false)
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка при отправке')
+      }
+      
+      setSubmitted(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Что-то пошло не так')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -82,6 +101,11 @@ export default function Home() {
                   </p>
                   
                   <div className="space-y-4">
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
                     <div>
                       <input
                         type="text"
