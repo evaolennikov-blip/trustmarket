@@ -1,16 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
-
-const mockListings = [
-  { id: '1', title: 'iPhone 14 Pro 128GB Space Black', price: 65000, condition: 'like_new', city: 'Москва', category: 'smartphones', images: [], seller: { name: 'Иван И.', verification_tier: 'trusted' as const, successful_transactions: 42 } },
-  { id: '2', title: 'Samsung Galaxy S23 256GB', price: 42000, condition: 'good', city: 'Москва', category: 'smartphones', images: [], seller: { name: 'Дмитрий К.', verification_tier: 'enhanced' as const, successful_transactions: 18 } },
-  { id: '3', title: 'MacBook Air M2 8GB 256GB', price: 89000, condition: 'like_new', city: 'Санкт-Петербург', category: 'laptops', images: [], seller: { name: 'Алексей П.', verification_tier: 'basic' as const, successful_transactions: 3 } },
-  { id: '4', title: 'AirPods Pro 2nd Gen', price: 14500, condition: 'new', city: 'Москва', category: 'accessories', images: [], seller: { name: 'Мария С.', verification_tier: 'trusted' as const, successful_transactions: 67 } },
-  { id: '5', title: 'Xiaomi 13 Pro 256GB', price: 38000, condition: 'good', city: 'Москва', category: 'smartphones', images: [], seller: { name: 'Сергей В.', verification_tier: 'enhanced' as const, successful_transactions: 11 } },
-]
+import { getListings, type Listing } from '@/lib/listings'
 
 const categories = [
   { id: 'all', label: 'Все категории' },
@@ -35,15 +28,45 @@ export default function ListingsPage() {
   const [condition, setCondition] = useState('all')
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [maxPrice, setMaxPrice] = useState('')
+  const [listings, setListings] = useState<Listing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const filtered = mockListings.filter(l => {
-    if (search && !l.title.toLowerCase().includes(search.toLowerCase())) return false
-    if (category !== 'all' && l.category !== category) return false
-    if (condition !== 'all' && l.condition !== condition) return false
-    if (verifiedOnly && !['enhanced', 'trusted'].includes(l.seller.verification_tier)) return false
-    if (maxPrice && l.price > parseInt(maxPrice)) return false
-    return true
-  })
+  useEffect(() => {
+    setLoading(true)
+    setError('')
+    getListings({
+      category,
+      condition,
+      maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
+      verifiedOnly,
+      search,
+    })
+      .then(data => {
+        setListings(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        setError('Не удалось загрузить объявления')
+        setLoading(false)
+      })
+  }, [search, category, condition, verifiedOnly, maxPrice])
+
+  // Map Supabase listing to ListingCard shape
+  const mapped = listings.map(l => ({
+    id: l.id,
+    title: l.title,
+    price: l.price_rub,
+    condition: l.condition,
+    city: l.city,
+    category: l.category,
+    images: l.images,
+    seller: {
+      name: l.seller.full_name,
+      verification_tier: l.seller.verification_tier,
+      successful_transactions: l.seller.successful_transactions,
+    },
+  }))
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,14 +139,24 @@ export default function ListingsPage() {
         {/* Listings grid */}
         <main className="flex-1">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-500">Найдено объявлений: <span className="font-semibold text-gray-900">{filtered.length}</span></p>
+            <p className="text-sm text-gray-500">
+              Найдено объявлений: <span className="font-semibold text-gray-900">{loading ? '...' : mapped.length}</span>
+            </p>
           </div>
 
-          {filtered.length === 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-64 bg-gray-200 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="text-center py-20 text-red-400">{error}</div>
+          ) : mapped.length === 0 ? (
             <div className="text-center py-20 text-gray-400">Объявления не найдены</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map(listing => (
+              {mapped.map(listing => (
                 <ListingCard key={listing.id} listing={listing} />
               ))}
             </div>
