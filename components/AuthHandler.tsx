@@ -11,16 +11,24 @@ export default function AuthHandler() {
     if (typeof window === 'undefined') return
     if (!window.location.hash.includes('access_token')) return
 
-    // Token is in the hash — let Supabase process it
+    const redirect = () => {
+      const next = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
+      sessionStorage.removeItem('auth_redirect')
+      window.history.replaceState(null, '', window.location.pathname)
+      router.replace(next)
+    }
+
+    // Try immediately — session may already be parsed
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        const next = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
-        sessionStorage.removeItem('auth_redirect')
-        // Clear the hash then navigate
-        window.history.replaceState(null, '', window.location.pathname)
-        router.replace(next)
-      }
+      if (session) redirect()
     })
+
+    // Also listen for SIGNED_IN in case hash processing is async
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) redirect()
+    })
+
+    return () => subscription.unsubscribe()
   }, [router])
 
   return null
