@@ -11,10 +11,12 @@ export function useAuth(redirectIfUnauthenticated = true) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const onAuthPages = window.location.pathname.startsWith('/auth')
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       setLoading(false)
-      if (!session && redirectIfUnauthenticated) {
+      if (!session && redirectIfUnauthenticated && !onAuthPages) {
         sessionStorage.setItem('auth_redirect', window.location.pathname)
         router.push('/auth')
       }
@@ -22,7 +24,7 @@ export function useAuth(redirectIfUnauthenticated = true) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (!session && redirectIfUnauthenticated) {
+      if (!session && redirectIfUnauthenticated && !onAuthPages) {
         sessionStorage.setItem('auth_redirect', window.location.pathname)
         router.push('/auth')
       }
