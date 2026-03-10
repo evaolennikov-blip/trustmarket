@@ -9,7 +9,11 @@ export default function AuthHandler() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!window.location.hash.includes('access_token')) return
+
+    const code = new URLSearchParams(window.location.search).get('code')
+    const hasHash = window.location.hash.includes('access_token')
+
+    if (!code && !hasHash) return
 
     const redirect = () => {
       const next = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
@@ -18,12 +22,19 @@ export default function AuthHandler() {
       router.replace(next)
     }
 
-    // Try immediately — session may already be parsed
+    if (code) {
+      // PKCE flow — exchange code for session
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (!error) redirect()
+      })
+      return
+    }
+
+    // Implicit flow — session in hash
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) redirect()
     })
 
-    // Also listen for SIGNED_IN in case hash processing is async
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session) redirect()
     })

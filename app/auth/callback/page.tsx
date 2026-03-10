@@ -8,24 +8,31 @@ export default function AuthCallbackPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Supabase automatically processes the #access_token hash on getSession()
+    const code = new URLSearchParams(window.location.search).get('code')
+
+    const finish = () => {
+      const next = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
+      sessionStorage.removeItem('auth_redirect')
+      router.replace(next)
+    }
+
+    if (code) {
+      // PKCE flow
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) router.replace('/auth')
+        else finish()
+      })
+      return
+    }
+
+    // Implicit flow (hash)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        const next = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
-        sessionStorage.removeItem('auth_redirect')
-        router.replace(next)
-      } else {
-        router.replace('/auth')
-      }
+      if (session) finish()
+      else router.replace('/auth')
     })
 
-    // Also listen for the SIGNED_IN event which fires when hash is processed
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        const next = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
-        sessionStorage.removeItem('auth_redirect')
-        router.replace(next)
-      }
+      if (event === 'SIGNED_IN' && session) finish()
     })
 
     return () => subscription.unsubscribe()
