@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/useAuth'
+import ImageUpload from '@/components/ImageUpload'
 
 type Step = 'details' | 'pricing' | 'review'
 
@@ -66,13 +67,14 @@ export default function SellPage() {
     price: '',
     city: '',
     agreed: false,
+    images: [] as string[],
   })
 
   if (authLoading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Загрузка...</div>
   )
 
-  const update = (field: string, value: string | boolean) =>
+  const update = (field: string, value: string | boolean | string[]) =>
     setFormData(prev => ({ ...prev, [field]: value }))
 
   const currentIndex = steps.findIndex(s => s.key === currentStep)
@@ -98,6 +100,7 @@ export default function SellPage() {
         model: formData.model,
         city: formData.city,
         status: 'pending',
+        images: formData.images,
       })
 
       if (err) throw new Error(err.message)
@@ -192,6 +195,8 @@ export default function SellPage() {
                   ))}
                 </div>
               </div>
+
+              <ImageUpload onUpload={(urls) => update('images', urls)} maxFiles={5} />
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Описание *</label>
