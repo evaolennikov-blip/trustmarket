@@ -19,10 +19,14 @@ export default function AuthPage() {
       return
     }
     setLoading(true)
+    const redirectTo = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/trustmarket/auth/callback`,
+      },
     })
+    if (!err) sessionStorage.setItem('auth_redirect', redirectTo)
     setLoading(false)
     if (err) {
       setError(err.message)
