@@ -1,7 +1,36 @@
-// NOTE: Middleware is disabled for static export (GitHub Pages).
-// Auth is enforced client-side via useAuth hook.
-// Re-enable when deploying to a server environment (Vercel, etc.)
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export function middleware() {}
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
 
-export const config = { matcher: [] }
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (cookies) => {
+          cookies.forEach(({ name, value, options }) => {
+            res.cookies.set({ name, value, ...options })
+          })
+        },
+      },
+    }
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (!session) {
+    const loginUrl = req.nextUrl.clone()
+    loginUrl.pathname = '/auth'
+    return NextResponse.redirect(loginUrl)
+  }
+
+  return res
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/sell/:path*', '/messages/:path*'],
+}
