@@ -1,42 +1,33 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function AuthCallbackPage() {
-  const router = useRouter()
-
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get('code')
 
     const finish = () => {
       const next = sessionStorage.getItem('auth_redirect') ?? '/dashboard'
       sessionStorage.removeItem('auth_redirect')
-      router.replace(next)
+      // Full navigation so server middleware sees the freshly set session cookie
+      window.location.href = next
     }
 
     if (code) {
-      // PKCE flow
       supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) router.replace('/auth')
+        if (error) window.location.href = '/auth'
         else finish()
       })
       return
     }
 
-    // Implicit flow (hash)
+    // Fallback: implicit flow (hash)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) finish()
-      else router.replace('/auth')
+      else window.location.href = '/auth'
     })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) finish()
-    })
-
-    return () => subscription.unsubscribe()
-  }, [router])
+  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
