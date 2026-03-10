@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import AuthHandler from '@/components/AuthHandler'
 
 export const metadata: Metadata = {
   title: 'Трастмаркет — Покупай и продавай электронику без мошенников',
@@ -14,7 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className="min-h-screen bg-white">{children}</body>
+      <body className="min-h-screen bg-white">
+        <AuthHandler />
+        {children}
+      </body>
     </html>
   )
 }
