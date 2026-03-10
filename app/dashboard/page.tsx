@@ -1,68 +1,84 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
+import { getUserProfile, getMyListings, type UserProfile, type MyListing } from '@/lib/users'
+
+type Tab = 'listings' | 'transactions'
+
+const tierLabel: Record<string, string> = {
+  trusted: 'Проверенный',
+  enhanced: 'Верифицирован',
+  basic: 'Базовый',
+  none: 'Новый',
+}
+
+const tierClass: Record<string, string> = {
+  trusted: 'bg-accent-100 text-accent-700',
+  enhanced: 'bg-trust-100 text-trust-700',
+  basic: 'bg-gray-100 text-gray-600',
+  none: 'bg-gray-100 text-gray-500',
+}
+
+const statusLabel: Record<string, string> = {
+  approved: 'Одобрено',
+  pending: 'На модерации',
+  draft: 'Черновик',
+  rejected: 'Отклонено',
+  sold: 'Продано',
+  expired: 'Истекло',
+  removed: 'Удалено',
+}
+
+const statusClass: Record<string, string> = {
+  approved: 'bg-accent-100 text-accent-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  draft: 'bg-gray-100 text-gray-500',
+  rejected: 'bg-red-100 text-red-700',
+  sold: 'bg-blue-100 text-blue-700',
+  expired: 'bg-gray-100 text-gray-400',
+  removed: 'bg-gray-100 text-gray-400',
+}
 
 export default function DashboardPage() {
-  const { loading } = useAuth()
-  if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Загрузка...</div>
+  const { user, loading: authLoading } = useAuth()
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [listings, setListings] = useState<MyListing[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
+  const [tab, setTab] = useState<Tab>('listings')
+  const [submitted] = useState(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('submitted') === '1'
+  )
 
-  const user = {
-    id: 'user-1',
-    name: 'Иван И.',
-    email: 'ivan@example.com',
-    verification_tier: 'trusted' as 'trusted' | 'enhanced' | 'basic' | 'none',
-    successful_transactions: 45,
-    rating: 98,
-    account_age: '2 года',
-  }
+  useEffect(() => {
+    if (!user) return
+    setDataLoading(true)
+    Promise.all([getUserProfile(user.id), getMyListings(user.id)]).then(([p, l]) => {
+      setProfile(p)
+      setListings(l)
+      setDataLoading(false)
+    })
+  }, [user])
 
-  const activeListings = [
-    {
-      id: '1',
-      title: 'iPhone 14 Pro 128GB Space Black',
-      price: 65000,
-      status: 'approved',
-      created_at: '2026-03-05',
-    },
-    {
-      id: '4',
-      title: 'MacBook Air M2 256GB',
-      price: 90000,
-      status: 'pending',
-      created_at: '2026-03-01',
-    },
-  ]
+  if (authLoading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Загрузка...</div>
+  )
 
-  const transactions = [
-    {
-      id: 't1',
-      listingTitle: 'iPhone 13 mini 128GB',
-      buyerName: 'Пётр П.',
-      sellerName: 'Иван И.',
-      amount: 40000,
-      status: 'held',
-      role: 'seller'
-    },
-    {
-      id: 't2',
-      listingTitle: 'AirPods Pro 2',
-      buyerName: 'Иван И.',
-      sellerName: 'Анна К.',
-      amount: 20000,
-      status: 'released',
-      role: 'buyer'
-    },
-  ]
+  const accountAge = profile
+    ? (() => {
+        const months = Math.floor((Date.now() - new Date(profile.account_created_at).getTime()) / (1000 * 60 * 60 * 24 * 30))
+        if (months < 1) return 'менее месяца'
+        if (months < 12) return `${months} мес.`
+        return `${Math.floor(months / 12)} г.`
+      })()
+    : null
 
-  const messages = [
-    { id: 'm1', sender: 'Пётр П.', content: 'Здравствуйте, интересует iPhone 14 Pro', timestamp: '14:30', unread: true },
-    { id: 'm2', sender: 'Модератор', content: 'Ваше объявление одобрено', timestamp: '10:15', unread: false },
-  ]
+  const displayName = profile?.full_name ?? user?.email?.split('@')[0] ?? '—'
+  const tier = profile?.verification_tier ?? 'none'
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -75,11 +91,9 @@ export default function DashboardPage() {
               <span className="font-bold text-xl text-trust-900">Трастмаркет</span>
             </Link>
             <div className="flex items-center gap-4">
-              <Link href="/listings" className="text-gray-600 hover:text-trust-600 font-medium">
-                Объявления
-              </Link>
-              <Link href="/sell" className="text-gray-600 hover:text-trust-600 font-medium">
-                Продать
+              <Link href="/listings" className="text-gray-600 hover:text-trust-600 font-medium text-sm">Объявления</Link>
+              <Link href="/sell" className="bg-trust-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-trust-800 transition">
+                + Продать
               </Link>
             </div>
           </div>
@@ -87,112 +101,121 @@ export default function DashboardPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {submitted && (
+          <div className="mb-6 bg-green-50 border border-green-100 rounded-xl p-4 text-green-800 text-sm">
+            Объявление отправлено на модерацию. Обычно занимает 15–30 минут.
+          </div>
+        )}
+
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Мой профиль</h1>
 
-        {/* User Info */}
+        {/* Profile card */}
         <div className="bg-white rounded-xl border border-gray-100 p-6 mb-8">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-trust-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-trust-700 font-bold text-2xl">{user.name[0]}</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-xl font-semibold text-gray-900">{user.name}</h2>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                  user.verification_tier === 'trusted' ? 'bg-accent-100 text-accent-700' :
-                  'bg-trust-100 text-trust-700'
-                }`}>
-                  {user.verification_tier === 'trusted' ? '✓ Проверенный' : 'Верифицирован'}
-                </span>
+          {dataLoading ? (
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full animate-pulse" />
+              <div className="space-y-2">
+                <div className="h-5 w-32 bg-gray-100 rounded animate-pulse" />
+                <div className="h-4 w-48 bg-gray-100 rounded animate-pulse" />
               </div>
-              <p className="text-gray-500 text-sm">На платформе {user.account_age}</p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-trust-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-trust-700 font-bold text-2xl">{displayName[0].toUpperCase()}</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-xl font-semibold text-gray-900">{displayName}</h2>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${tierClass[tier]}`}>
+                      {tier === 'trusted' && '✓ '}{tierLabel[tier]}
+                    </span>
+                  </div>
+                  <p className="text-gray-500 text-sm">{user?.email}</p>
+                  {accountAge && <p className="text-gray-400 text-xs mt-0.5">На платформе {accountAge}</p>}
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-6 text-sm">
-            <div>
-              <dt className="text-gray-500">Успешных сделок</dt>
-              <dd className="font-medium text-accent-600">{user.successful_transactions}</dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Рейтинг</dt>
-              <dd className="font-medium text-accent-600">{user.rating}%</dd>
-            </div>
-          </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                <div className="bg-trust-50 rounded-lg p-3">
+                  <p className="text-xs text-trust-600">Успешных сделок</p>
+                  <p className="text-xl font-bold text-trust-900">{profile?.successful_transactions ?? 0}</p>
+                </div>
+                <div className="bg-trust-50 rounded-lg p-3">
+                  <p className="text-xs text-trust-600">Объявлений</p>
+                  <p className="text-xl font-bold text-trust-900">{listings.length}</p>
+                </div>
+                <div className="bg-trust-50 rounded-lg p-3">
+                  <p className="text-xs text-trust-600">Активных</p>
+                  <p className="text-xl font-bold text-trust-900">{listings.filter(l => l.status === 'approved').length}</p>
+                </div>
+                <div className="bg-trust-50 rounded-lg p-3">
+                  <p className="text-xs text-trust-600">Уровень</p>
+                  <p className="text-sm font-bold text-trust-900 mt-1">{tierLabel[tier]}</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Tabs */}
         <div className="bg-white rounded-xl border border-gray-100">
           <div className="flex border-b border-gray-100">
-            <button className="px-6 py-3 text-sm font-medium text-trust-700 border-b-2 border-trust-700">
-              Мои объявления
-            </button>
-            <button className="px-6 py-3 text-sm font-medium text-gray-600 hover:text-trust-600 hover:border-b-2 hover:border-trust-100">
-              Мои сделки
-            </button>
-            <button className="px-6 py-3 text-sm font-medium text-gray-600 hover:text-trust-600 hover:border-b-2 hover:border-trust-100">
-              Сообщения
-            </button>
+            {([['listings', 'Мои объявления'], ['transactions', 'Сделки']] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setTab(key)}
+                className={`px-6 py-3 text-sm font-medium transition border-b-2 ${
+                  tab === key ? 'text-trust-700 border-trust-700' : 'text-gray-500 border-transparent hover:text-gray-700'
+                }`}>
+                {label}
+              </button>
+            ))}
           </div>
 
           <div className="p-6">
-            {/* Active Listings Tab Content */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Активные объявления</h3>
-              <div className="space-y-4">
-                {activeListings.map((listing) => (
-                  <div key={listing.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
-                    <div>
-                      <Link href={`/listings/${listing.id}`} className="font-medium text-gray-900 hover:text-trust-600">
-                        {listing.title}
-                      </Link>
-                      <p className="text-sm text-gray-500">{listing.price.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      listing.status === 'approved' ? 'bg-accent-100 text-accent-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {listing.status === 'approved' ? 'Одобрено' : 'На модерации'}
-                    </span>
+            {tab === 'listings' && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Мои объявления</h3>
+                  <Link href="/sell" className="text-sm text-trust-600 hover:text-trust-800 font-medium">+ Добавить</Link>
+                </div>
+                {dataLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2].map(i => <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse" />)}
                   </div>
-                ))}
-              </div>
-            </div>
+                ) : listings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400 mb-4">У вас нет объявлений</p>
+                    <Link href="/sell" className="bg-trust-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:bg-trust-800 transition">
+                      Подать первое объявление
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {listings.map(listing => (
+                      <div key={listing.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
+                        <div className="min-w-0">
+                          <Link href={`/listings/${listing.id}`}
+                            className="font-medium text-gray-900 hover:text-trust-600 truncate block">
+                            {listing.title}
+                          </Link>
+                          <p className="text-sm text-gray-500">{listing.price_rub.toLocaleString('ru-RU')} ₽</p>
+                        </div>
+                        <span className={`ml-4 flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass[listing.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                          {statusLabel[listing.status] ?? listing.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
 
-            {/* Transactions Tab Content (placeholder) */}
-            {/* <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Мои сделки</h3>
-              <div className="space-y-4">
-                {transactions.map((tx) => (
-                  <div key={tx.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{tx.listingTitle}</p>
-                      <p className="text-sm text-gray-500">{tx.amount.toLocaleString('ru-RU')} ₽</p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      tx.status === 'released' ? 'bg-accent-100 text-accent-700' : 'bg-yellow-100 text-yellow-700'
-                    }`}>
-                      {tx.status === 'released' ? 'Завершена' : 'В процессе'}
-                    </span>
-                  </div>
-                ))}
+            {tab === 'transactions' && (
+              <div className="text-center py-12 text-gray-400">
+                <p>Сделки появятся здесь после первой покупки или продажи</p>
               </div>
-            </div> */}
-
-            {/* Messages Tab Content (placeholder) */}
-            {/* <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Мои сообщения</h3>
-              <div className="space-y-4">
-                {messages.map((msg) => (
-                  <div key={msg.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{msg.sender}</p>
-                      <p className="text-sm text-gray-500">{msg.content}</p>
-                    </div>
-                    {msg.unread && <span className="w-2 h-2 bg-trust-500 rounded-full"></span>}
-                  </div>
-                ))}
-              </div>
-            </div> */}
+            )}
           </div>
         </div>
       </div>

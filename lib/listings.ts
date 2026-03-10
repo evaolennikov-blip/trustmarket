@@ -41,16 +41,18 @@ export async function getListings(filters?: {
   if (filters?.maxPrice) {
     query = query.lte('price_rub', filters.maxPrice)
   }
-  if (filters?.verifiedOnly) {
-    query = query.in('seller.verification_tier', ['enhanced', 'trusted'])
-  }
+  // verifiedOnly filtered client-side after fetch (can't filter on joined columns in Supabase)
   if (filters?.search) {
     query = query.ilike('title', `%${filters.search}%`)
   }
 
   const { data, error } = await query
   if (error) throw error
-  return (data ?? []) as unknown as Listing[]
+  let results = (data ?? []) as unknown as Listing[]
+  if (filters?.verifiedOnly) {
+    results = results.filter(l => l.seller.verification_tier === 'enhanced' || l.seller.verification_tier === 'trusted')
+  }
+  return results
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
