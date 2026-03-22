@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import ListingCard from '@/components/ListingCard'
 import { getListings, type Listing } from '@/lib/listings'
@@ -24,6 +24,7 @@ const conditions = [
 
 export default function ListingsPage() {
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [condition, setCondition] = useState('all')
   const [verifiedOnly, setVerifiedOnly] = useState(false)
@@ -31,6 +32,13 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [search])
 
   useEffect(() => {
     setLoading(true)
@@ -40,7 +48,7 @@ export default function ListingsPage() {
       condition,
       maxPrice: maxPrice ? parseInt(maxPrice) : undefined,
       verifiedOnly,
-      search,
+      search: debouncedSearch,
     })
       .then(data => {
         setListings(data)
@@ -50,7 +58,7 @@ export default function ListingsPage() {
         setError('Не удалось загрузить объявления')
         setLoading(false)
       })
-  }, [search, category, condition, verifiedOnly, maxPrice])
+  }, [debouncedSearch, category, condition, verifiedOnly, maxPrice])
 
   // Map Supabase listing to ListingCard shape
   const mapped = listings.map(l => ({

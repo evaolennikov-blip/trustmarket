@@ -45,7 +45,7 @@ async function ensureProfile(userId: string, email: string) {
     email,
     verification_tier: 'none',
     full_name: email.split('@')[0],
-    password_hash: 'magic_link_auth',
+    password_hash: '',
   }).select('id').single()
 
   if (error) throw new Error('Не удалось создать профиль: ' + error.message)

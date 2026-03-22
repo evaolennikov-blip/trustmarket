@@ -88,30 +88,5 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  try {
-    const supabase = getSupabase()
-    
-    // Check auth - in production, add admin authentication
-    const { data, error } = await supabase
-      .from('waitlist')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100)
-
-    if (error) {
-      console.error('Supabase error:', error)
-      return NextResponse.json(
-        { error: 'Ошибка при получении данных' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ success: true, data })
-  } catch (error) {
-    console.error('Waitlist GET error:', error)
-    return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера' },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 }

@@ -90,15 +90,6 @@ export default function ImageUpload({ onUpload, maxFiles = 5 }: ImageUploadProps
       onUpload(allUrls)
       return prev
     })
-
-    // Re-read current state after uploads complete
-    setFiles(prev => {
-      const allUrls = prev
-        .filter(f => f.url && !f.error)
-        .map(f => f.url)
-      onUpload(allUrls)
-      return prev
-    })
   }, [files, maxFiles, uploadFile, onUpload])
 
   const removeFile = (id: string) => {
