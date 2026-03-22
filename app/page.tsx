@@ -237,7 +237,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">
-              Уже 847 человек в waitlist
+              Присоединяйтесь к waitlist
             </h2>
             
             {/* Placeholder for testimonials */}
