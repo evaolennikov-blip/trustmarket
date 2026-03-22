@@ -4,8 +4,21 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/useAuth'
 import { getUserProfile, getMyListings, type UserProfile, type MyListing } from '@/lib/users'
+import EscrowStatus from '@/components/EscrowStatus'
 
 type Tab = 'listings' | 'transactions'
+
+interface Transaction {
+  id: string
+  escrow_state: 'pending' | 'held' | 'released' | 'refunded' | 'cancelled'
+  amount_rub: number
+  created_at: string
+  completed_at: string | null
+  dispute_opened_at: string | null
+  listing: { id: string; title: string; images: string[] } | null
+  buyer: { id: string; full_name: string } | null
+  seller: { id: string; full_name: string } | null
+}
 
 const tierLabel: Record<string, string> = {
   trusted: 'Проверенный',
@@ -41,11 +54,14 @@ const statusClass: Record<string, string> = {
   removed: 'bg-gray-100 text-gray-400',
 }
 
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [listings, setListings] = useState<MyListing[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const [txnLoading, setTxnLoading] = useState(false)
   const [tab, setTab] = useState<Tab>('listings')
   const [submitted] = useState(() =>
     typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('submitted') === '1'
@@ -60,6 +76,31 @@ export default function DashboardPage() {
       setDataLoading(false)
     })
   }, [user])
+
+  useEffect(() => {
+    if (tab !== 'transactions' || !user) return
+    setTxnLoading(true)
+    fetch('/api/transactions')
+      .then(r => r.json())
+      .then(json => { setTransactions(json.data ?? []) })
+      .finally(() => setTxnLoading(false))
+  }, [tab, user])
+
+  async function confirmDelivery(txnId: string) {
+    await fetch(`/api/transactions/${txnId}/confirm`, { method: 'POST' })
+    setTransactions(prev => prev.map(t => t.id === txnId ? { ...t, escrow_state: 'released' as const } : t))
+  }
+
+  async function openDispute(txnId: string) {
+    const reason = prompt('Опишите проблему (необязательно):')
+    if (reason === null) return
+    await fetch(`/api/transactions/${txnId}/dispute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    })
+    setTransactions(prev => prev.map(t => t.id === txnId ? { ...t, dispute_opened_at: new Date().toISOString() } : t))
+  }
 
   if (authLoading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-400">Загрузка...</div>
@@ -212,9 +253,58 @@ export default function DashboardPage() {
             )}
 
             {tab === 'transactions' && (
-              <div className="text-center py-12 text-gray-400">
-                <p>Сделки появятся здесь после первой покупки или продажи</p>
-              </div>
+              <>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Мои сделки</h3>
+                {txnLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2].map(i => <div key={i} className="h-20 bg-gray-100 rounded-lg animate-pulse" />)}
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <p>Сделки появятся здесь после первой покупки или продажи</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {transactions.map(txn => (
+                      <div key={txn.id} className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate">
+                              {txn.listing?.title ?? 'Объявление удалено'}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              {txn.amount_rub.toLocaleString('ru-RU')} ₽
+                              {txn.buyer && txn.seller && (
+                                <span> · {txn.buyer.full_name} → {txn.seller.full_name}</span>
+                              )}
+                            </p>
+                          </div>
+                          <EscrowStatus state={txn.escrow_state} />
+                          {txn.dispute_opened_at && (
+                            <span className="text-xs text-red-600 font-medium">Спор открыт</span>
+                          )}
+                        </div>
+                        {txn.escrow_state === 'held' && !txn.dispute_opened_at && txn.buyer?.id === user?.id && (
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => confirmDelivery(txn.id)}
+                              className="text-sm bg-trust-700 text-white px-3 py-1.5 rounded-lg hover:bg-trust-800 transition"
+                            >
+                              Подтвердить получение
+                            </button>
+                            <button
+                              onClick={() => openDispute(txn.id)}
+                              className="text-sm border border-red-300 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition"
+                            >
+                              Открыть спор
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

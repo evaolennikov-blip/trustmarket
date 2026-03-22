@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import VerifiedBadge from '@/components/VerifiedBadge'
+import BuyButton from '@/components/BuyButton'
 import { supabase } from '@/lib/supabase'
 
 interface SellerData {
@@ -149,9 +150,7 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
                 {listing.price_rub.toLocaleString('ru-RU')} ₽
               </p>
 
-              <button className="w-full bg-trust-700 hover:bg-trust-800 text-white font-semibold py-3 rounded-xl transition">
-                Купить через эскроу
-              </button>
+              <BuyButton listingId={listing.id} />
 
               <Link
                 href={`/messages?seller=${listing.seller_id}&listing=${listing.id}`}
