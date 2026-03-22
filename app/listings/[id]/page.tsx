@@ -153,6 +153,13 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
                 Купить через эскроу
               </button>
 
+              <Link
+                href={`/messages?seller=${listing.seller_id}&listing=${listing.id}`}
+                className="block w-full text-center border border-trust-300 text-trust-700 hover:bg-trust-50 font-semibold py-3 rounded-xl transition"
+              >
+                Написать продавцу
+              </Link>
+
               <div className="flex items-start gap-2 text-sm text-gray-500 bg-gray-50 rounded-xl p-3">
                 <span className="text-base">💳</span>
                 <p>Деньги хранятся в эскроу до подтверждения получения</p>
